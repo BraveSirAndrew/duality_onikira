@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Windows.Forms;
@@ -460,6 +461,7 @@ namespace DualityEditor.Forms
 			});
 			workInterface.Progress += 0.4f;
 		}
+		
 		private static void RestoreTemporaryData(WorkerInterface workInterface, Stream strScene, Stream strData)
 		{
 			StreamReader strDataReader = new StreamReader(strData);
