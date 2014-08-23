@@ -160,6 +160,7 @@
     <Compile Include="CorePluginInterface\PreviewProvider.cs" />
     <Compile Include="DualityEditorApp.cs" />
     <Compile Include="Helpers\EditorUtility.cs" />
+    <Compile Include="IFileEventManagerWrapper.cs" />
     <Compile Include="Properties\GeneralResCache.cs" />
     <Compile Include="EditorUserData.cs" />
     <Compile Include="Forms\SaveLayoutDialog.cs">
@@ -238,6 +239,8 @@
     <Compile Include="Helpers\ObjectSelection.cs" />
     <Compile Include="HelpSystem.cs" />
     <Compile Include="FileEventManager.cs" />
+    <Compile Include="ResourceDatabase.cs" />
+    <Compile Include="ResourceReferences.cs" />
     <Compile Include="Sandbox.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
