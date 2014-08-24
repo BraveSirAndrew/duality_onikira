@@ -49,34 +49,40 @@ namespace Duality.Editor.ResourceManagement
 
 		public ResourceReferences GetResourceReferences(string resourcePath)
 		{
-			if(!_references.Any(x=> x.Key == resourcePath))
+			if (!_references.Any(x => x.Key == resourcePath))
 				return null;
-			var resources = _references.Where(x=> x.Key == resourcePath).Select(x=> x.Value).ToList();
-			return new ResourceReferences {Path = resourcePath, References = resources};
+			var resources = _references.Where(x => x.Key == resourcePath).Select(x => x.Value).ToList();
+			return new ResourceReferences { Path = resourcePath, References = resources };
 		}
 
 		private void OnResourceCreated(object sender, ResourceEventArgs e)
 		{
+			if (e.IsDirectory)
+				return;
 			var resources = _contentPathModifier.FindReferencedResources(e.Path);
 			foreach (var resource in resources)
 			{
-				_references.Add(new KeyValuePair<string, string>(e.Path, resource));
+				var res = new KeyValuePair<string, string>(e.Path, resource);
+				if (!_references.Any(x => x.Key == res.Key && x.Value == res.Value))
+					_references.Add(res);
 			}
 		}
 
 		private void OnResourceModified(object sender, ResourceEventArgs e)
 		{
-			UpdateReferences(e.Path);
+			if (!e.IsDirectory)
+				UpdateReferences(e.Path);
 		}
 
 		private void OnResourceSaved(object sender, ResourceSaveEventArgs e)
 		{
-			UpdateReferences(e.Path);
+			if (!e.IsDirectory)
+				UpdateReferences(e.Path);
 		}
 
 		private void UpdateReferences(string path)
 		{
-			var referencesFound = _contentPathModifier.FindReferencedResources(path);
+			var referencesFound = _contentPathModifier.FindReferencedResources(path).Distinct();
 			_references.RemoveAll(x => x.Key == path);
 			_references.AddRange(referencesFound.Select(r => new KeyValuePair<string, string>(path, r)));
 		}
@@ -88,8 +94,8 @@ namespace Duality.Editor.ResourceManagement
 
 		private void OnResourceRenamed(object sender, ResourceRenamedEventArgs e)
 		{
-			var referencesKeys = _references.Where(x => x.Value == e.OldPath).Select(x => x.Key);
-			
+			var referencesKeys = _references.Where(x => x.Value == e.OldPath).Select(x => x.Key).Distinct();
+
 			foreach (var resourcePath in referencesKeys)
 			{
 				if (DualityEditorApp.IsResourceUnsaved(resourcePath))

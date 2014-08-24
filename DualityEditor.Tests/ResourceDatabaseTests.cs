@@ -163,6 +163,22 @@ namespace DualityEditor.Tests
 			contentPathModifierMock.Verify(x => x.UpdateContentPaths(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()),Times.Never);
 		}
 
+		[Test]
+		public void When_resource_is_directory_on_create_Then_do_not_add()
+		{
+			RaiseResourceCreatedEvent(Environment.CurrentDirectory);
+			
+			Assert.IsNull(Db.GetResourceReferences(Environment.CurrentDirectory));
+		}
+
+		[Test]
+		public void When_resource_is_directory_on_modify_Then_do_not_add()
+		{
+			RaiseResourceModifiedEvent(Environment.CurrentDirectory);
+
+			Assert.IsNull(Db.GetResourceReferences(Environment.CurrentDirectory));
+		}
+
 		private Mock<IResourceContentPathModifier> CreateMockPathModifier()
 		{
 			var contentPathModifier = new Mock<IResourceContentPathModifier>();
