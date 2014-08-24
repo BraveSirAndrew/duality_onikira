@@ -179,6 +179,10 @@ namespace Duality.Editor
 			DualityEditorApp.needsRecovery = recover;
 			DualityEditorApp.mainForm = mainForm;
 
+			new InMemoryResourceChangedTracker();
+			var resourceDatabase = new ResourceDatabase(new FileEventManagerWrapper());
+			resourceDatabase.Initialize();
+
 			// Create working directories, if not existing yet.
 			if (!Directory.Exists(DualityApp.DataDirectory))
 			{

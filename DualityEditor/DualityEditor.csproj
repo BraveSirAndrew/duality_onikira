@@ -121,6 +121,7 @@
   <ItemGroup>
     <Compile Include="Controls\TreeModels\TypeHierarchy\ModelItems.cs" />
     <Compile Include="Controls\TreeModels\TypeHierarchy\TypeBrowserTreeModel.cs" />
+    <Compile Include="FileEventManagerWrapper.cs" />
     <Compile Include="Forms\CreateObjectDialog.cs">
       <SubType>Form</SubType>
     </Compile>

@@ -351,7 +351,7 @@ namespace Duality.Editor
 			}
 
 			// If required, perform a global rename operation in all existing content
-			if (renameEventBuffer != null)
+			if (renameEventBuffer != null && Formatter.DefaultMethod == FormattingMethod.Binary)
 			{
 				// Don't do it now - schedule it for the main form event loop so we don't block here.
 				DualityEditorApp.MainForm.BeginInvoke((Action)delegate() {
@@ -498,7 +498,6 @@ namespace Duality.Editor
 			// Rename in actual content
 			var targetResTypes = renameData.Any(e => e.IsDirectory) ? null : renameData.Select(e => e.ContentType).ToArray();
 			var loadedContent = ContentProvider.GetLoadedContent<Resource>();
-			var reloadContent = new List<IContentRef>();
 			List<string> resFiles = Resource.GetResourceFiles();
 			List<Resource> modifiedRes = new List<Resource>();
 			foreach (string file in resFiles)

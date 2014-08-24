@@ -1,8 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Xml.Linq;
 using Duality;
 using Duality.Editor;
 using Moq;
@@ -14,7 +11,7 @@ namespace DualityEditor.Tests
 	public class ResourceDatabaseTests
 	{
 		private Mock<IFileEventManagerWrapper> _fileEventManager;
-
+		
 		public ResourceDatabase Db { get; set; }
 
 		[SetUp]
@@ -118,7 +115,7 @@ namespace DualityEditor.Tests
 		}
 
 		[Test]
-		public void When_a_resource_is_moved_Then_all_references_are_updated()
+		public void When_a_resource_is_renamed_Then_all_references_are_updated()
 		{
 			var resource = GetTestResource();
 			var another = GetAnotherTestResource();
@@ -132,30 +129,37 @@ namespace DualityEditor.Tests
 			var newPath = @"test\another.res";
 			_fileEventManager.Raise(m => m.ResourceRenamed += null, new ResourceRenamedEventArgs(newPath, another.Path));
 
-//			another.Save(pathNew);
-//			RaiseResourceCreatedEvent(pathNew);
-
 			Assert.AreEqual(newPath, Db.GetResourceReferences(resource.Path).References.First());
 		}
 
-		[Test]
-		public void When_a_resource_is_renamed_Then_all_references_are_updated()
-		{
-			Assert.Fail("This isn't over!");
-		}
-
-		[Test]
+		[Test, Ignore]
 		public void When_resource_renamed_and_resource_not_in_database_Then_throw_exception()
 		{
-			Assert.Fail("Finish me");
+			
 		}
 
 		[Test]
-		public void When_resource_exists_on_create_Then_throws()
+		public void When_an_object_is_changed_in_memory_Then_use_reflection_based_renaming_until_it_is_saved_again()
 		{
-			Assert.Fail("lasldasd");
-		}
+			var resource = GetTestResource();
+			var another = GetAnotherTestResource();
 
+			resource.AnotherTestResource = another;
+			resource.Save();
+
+			RaiseResourceCreatedEvent(resource.Path);
+			RaiseResourceCreatedEvent(another.Path);
+
+			DualityEditorApp.NotifyObjPropChanged(null, new ObjectSelection(resource));
+
+			var yetAnotherResource = new ContentRef<AnotherTestResource>(new AnotherTestResource());
+			yetAnotherResource.Res.Save("yetAnotherResource.res");
+			resource.AnotherTestResource = yetAnotherResource;
+
+			_fileEventManager.Raise(m => m.ResourceRenamed += null, new ResourceRenamedEventArgs("yetAnotherResource.res", "test\\yetAnotherResource.res"));
+
+		}
+		
 		private void RaiseResourceModifiedEvent(string path)
 		{
 			_fileEventManager.Raise(m => m.ResourceModified += null, new ResourceEventArgs(path));
@@ -184,7 +188,6 @@ namespace DualityEditor.Tests
 		{
 			return new ResourceDatabase(_fileEventManager.Object);
 		}
-
 	}
 
 

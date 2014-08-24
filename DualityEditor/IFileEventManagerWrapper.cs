@@ -8,5 +8,7 @@ namespace Duality.Editor
 		event EventHandler<ResourceEventArgs> ResourceModified;
 		event EventHandler<ResourceEventArgs> ResourceDeleted;
 		event EventHandler<ResourceRenamedEventArgs> ResourceRenamed;
+
+		event EventHandler<ResourceSaveEventArgs> ResourceSaved;
 	}
 }
