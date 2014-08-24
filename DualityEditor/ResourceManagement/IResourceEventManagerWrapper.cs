@@ -1,8 +1,8 @@
 using System;
 
-namespace Duality.Editor
+namespace Duality.Editor.ResourceManagement
 {
-	public interface IFileEventManagerWrapper
+	public interface IResourceEventManagerWrapper
 	{
 		event EventHandler<ResourceEventArgs> ResourceCreated;
 		event EventHandler<ResourceEventArgs> ResourceModified;

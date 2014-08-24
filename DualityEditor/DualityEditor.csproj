@@ -121,7 +121,7 @@
   <ItemGroup>
     <Compile Include="Controls\TreeModels\TypeHierarchy\ModelItems.cs" />
     <Compile Include="Controls\TreeModels\TypeHierarchy\TypeBrowserTreeModel.cs" />
-    <Compile Include="FileEventManagerWrapper.cs" />
+    <Compile Include="ResourceManagement\ResourceEventManagerWrapper.cs" />
     <Compile Include="Forms\CreateObjectDialog.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -161,7 +161,11 @@
     <Compile Include="CorePluginInterface\PreviewProvider.cs" />
     <Compile Include="DualityEditorApp.cs" />
     <Compile Include="Helpers\EditorUtility.cs" />
-    <Compile Include="IFileEventManagerWrapper.cs" />
+    <Compile Include="ResourceManagement\IResourceEventManagerWrapper.cs" />
+    <Compile Include="ResourceManagement\IResourceContentPathModifier.cs" />
+    <Compile Include="ResourceManagement\XmlResourceContentPathModifier.cs" />
+    <Compile Include="ResourceManagement\ResourceDatabase.cs" />
+    <Compile Include="ResourceManagement\UnsavedResourceRenamer.cs" />
     <Compile Include="Properties\GeneralResCache.cs" />
     <Compile Include="EditorUserData.cs" />
     <Compile Include="Forms\SaveLayoutDialog.cs">
@@ -240,8 +244,7 @@
     <Compile Include="Helpers\ObjectSelection.cs" />
     <Compile Include="HelpSystem.cs" />
     <Compile Include="FileEventManager.cs" />
-    <Compile Include="ResourceDatabase.cs" />
-    <Compile Include="ResourceReferences.cs" />
+    <Compile Include="ResourceManagement\ResourceReferences.cs" />
     <Compile Include="Sandbox.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

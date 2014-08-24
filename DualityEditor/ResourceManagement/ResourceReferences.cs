@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace Duality.Editor
+namespace Duality.Editor.ResourceManagement
 {
 	public class ResourceReferences
 	{

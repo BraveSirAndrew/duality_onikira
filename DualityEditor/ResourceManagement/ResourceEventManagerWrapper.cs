@@ -1,8 +1,8 @@
 using System;
 
-namespace Duality.Editor
+namespace Duality.Editor.ResourceManagement
 {
-	public class FileEventManagerWrapper : IFileEventManagerWrapper
+	public class ResourceEventManagerWrapper : IResourceEventManagerWrapper
 	{
 		public event EventHandler<ResourceEventArgs> ResourceCreated;
 		public event EventHandler<ResourceEventArgs> ResourceModified;
@@ -10,7 +10,7 @@ namespace Duality.Editor
 		public event EventHandler<ResourceRenamedEventArgs> ResourceRenamed;
 		public event EventHandler<ResourceSaveEventArgs> ResourceSaved;
 
-		public FileEventManagerWrapper()
+		public ResourceEventManagerWrapper()
 		{
 			FileEventManager.ResourceCreated += OnResourceCreated;
 			FileEventManager.ResourceModified += OnResourceModified;

@@ -1,25 +1,26 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Xml.Linq;
 using Duality.Serialization;
 
-namespace Duality.Editor
+namespace Duality.Editor.ResourceManagement
 {
 	[Serializable]
 	public class ResourceDatabase
 	{
+		private readonly IResourceContentPathModifier _contentPathModifier;
 		private const string DatabaseName = "ResourceDatabase.db";
 
 		private List<KeyValuePair<string, string>> _references = new List<KeyValuePair<string, string>>();
 
-		public ResourceDatabase(IFileEventManagerWrapper wrapper)
+		public ResourceDatabase(IResourceEventManagerWrapper wrapper, IResourceContentPathModifier contentPathModifier)
 		{
+			_contentPathModifier = contentPathModifier;
 			AttachEvents(wrapper);
 		}
 
-		private void AttachEvents(IFileEventManagerWrapper wrapper)
+		private void AttachEvents(IResourceEventManagerWrapper wrapper)
 		{
 			wrapper.ResourceCreated += OnResourceCreated;
 			wrapper.ResourceModified += OnResourceModified;
@@ -56,7 +57,7 @@ namespace Duality.Editor
 
 		private void OnResourceCreated(object sender, ResourceEventArgs e)
 		{
-			var resources = FindReferencedResourcesInXml(e.Path);
+			var resources = _contentPathModifier.FindReferencedResources(e.Path);
 			foreach (var resource in resources)
 			{
 				_references.Add(new KeyValuePair<string, string>(e.Path, resource));
@@ -65,16 +66,19 @@ namespace Duality.Editor
 
 		private void OnResourceModified(object sender, ResourceEventArgs e)
 		{
-			var referencesFound = FindReferencedResourcesInXml(e.Path);
-			_references.RemoveAll(x => x.Key == e.Path);
-			_references.AddRange(referencesFound.Select(r=> new KeyValuePair<string, string>(e.Path, r)));
+			UpdateReferences(e.Path);
 		}
 
 		private void OnResourceSaved(object sender, ResourceSaveEventArgs e)
 		{
-			var referencesFound = FindReferencedResourcesInXml(e.Path);
-			_references.RemoveAll(x => x.Key == e.Path);
-			_references.AddRange(referencesFound.Select(r => new KeyValuePair<string, string>(e.Path, r)));
+			UpdateReferences(e.Path);
+		}
+
+		private void UpdateReferences(string path)
+		{
+			var referencesFound = _contentPathModifier.FindReferencedResources(path);
+			_references.RemoveAll(x => x.Key == path);
+			_references.AddRange(referencesFound.Select(r => new KeyValuePair<string, string>(path, r)));
 		}
 
 		private void OnResourceDeleted(object sender, ResourceEventArgs e)
@@ -91,13 +95,7 @@ namespace Duality.Editor
 				if (DualityEditorApp.IsResourceUnsaved(resourcePath))
 					continue;
 
-				var xml = XDocument.Load(resourcePath);
-				var contentPathElements = xml.Descendants("contentPath").Where(x => x.Value == e.OldPath);
-				foreach (var element in contentPathElements)
-				{
-					element.Value = e.Path;
-				}
-				xml.Save(resourcePath);
+				_contentPathModifier.UpdateContentPaths(e.Path, e.OldPath, resourcePath);
 			}
 
 			var references = _references.Where(x => x.Value == e.OldPath).ToArray();
@@ -105,13 +103,6 @@ namespace Duality.Editor
 			{
 				_references[_references.IndexOf(reference)] = new KeyValuePair<string, string>(reference.Key, e.Path);
 			}
-		}
-
-		private List<string> FindReferencedResourcesInXml(string path)
-		{
-			var xml = XDocument.Load(path);
-
-			return xml.Descendants("contentPath").Select(x => x.Value).ToList();
 		}
 	}
 }

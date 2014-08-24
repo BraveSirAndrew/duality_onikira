@@ -9,6 +9,7 @@ using System.Drawing;
 using System.Xml.Linq;
 using System.Text.RegularExpressions;
 using Duality.Components;
+using Duality.Editor.ResourceManagement;
 using Duality.Resources;
 using Duality.Drawing;
 using Duality.Editor.Forms;
@@ -179,8 +180,8 @@ namespace Duality.Editor
 			DualityEditorApp.needsRecovery = recover;
 			DualityEditorApp.mainForm = mainForm;
 
-			new InMemoryResourceChangedTracker();
-			var resourceDatabase = new ResourceDatabase(new FileEventManagerWrapper());
+			new UnsavedResourceRenamer();
+			var resourceDatabase = new ResourceDatabase(new ResourceEventManagerWrapper(), new XmlResourceContentPathModifier());
 			resourceDatabase.Initialize();
 
 			// Create working directories, if not existing yet.

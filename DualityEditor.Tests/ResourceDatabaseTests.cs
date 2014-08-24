@@ -1,7 +1,9 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using Duality;
 using Duality.Editor;
+using Duality.Editor.ResourceManagement;
 using Moq;
 using NUnit.Framework;
 
@@ -10,14 +12,15 @@ namespace DualityEditor.Tests
 	[TestFixture]
 	public class ResourceDatabaseTests
 	{
-		private Mock<IFileEventManagerWrapper> _fileEventManager;
+		private Mock<IResourceEventManagerWrapper> _fileEventManager;
 		
+
 		public ResourceDatabase Db { get; set; }
 
 		[SetUp]
 		public void Setup()
 		{
-			_fileEventManager = new Mock<IFileEventManagerWrapper>();
+			_fileEventManager = new Mock<IResourceEventManagerWrapper>();
 			Db = CreateResourceDatabase();
 		}
 
@@ -107,11 +110,11 @@ namespace DualityEditor.Tests
 		}
 
 		[Test]
-		public void When_a_resource_is_deleted_that_doesnt_exist_in_the_database_Then_throw()
+		public void When_a_resource_is_deleted_that_doesnt_exist_in_the_database_Then_does_not_throw()
 		{
 			var resource = GetTestResource();
 
-			Assert.Throws<InvalidOperationException>(() => _fileEventManager.Raise(m => m.ResourceDeleted += null, new ResourceEventArgs(resource.Path)));
+			Assert.DoesNotThrow(() => _fileEventManager.Raise(m => m.ResourceDeleted += null, new ResourceEventArgs(resource.Path)));
 		}
 
 		[Test]
@@ -132,15 +135,11 @@ namespace DualityEditor.Tests
 			Assert.AreEqual(newPath, Db.GetResourceReferences(resource.Path).References.First());
 		}
 
-		[Test, Ignore]
-		public void When_resource_renamed_and_resource_not_in_database_Then_throw_exception()
-		{
-			
-		}
-
 		[Test]
-		public void When_an_object_is_changed_in_memory_Then_use_reflection_based_renaming_until_it_is_saved_again()
+		public void When_an_unsaved_resource_is_changed_Then_do_not_save()
 		{
+			var contentPathModifierMock = CreateMockPathModifier();
+			Db = new ResourceDatabase(_fileEventManager.Object, contentPathModifierMock.Object);
 			var resource = GetTestResource();
 			var another = GetAnotherTestResource();
 
@@ -150,16 +149,27 @@ namespace DualityEditor.Tests
 			RaiseResourceCreatedEvent(resource.Path);
 			RaiseResourceCreatedEvent(another.Path);
 
-			DualityEditorApp.NotifyObjPropChanged(null, new ObjectSelection(resource));
+			DualityEditorApp.FlagResourceUnsaved(resource);
 
+			contentPathModifierMock.Setup(x => x.FindReferencedResources(It.IsAny<string>())).Returns(()=> new List<string> { "yetAnotherResource.res" });
 			var yetAnotherResource = new ContentRef<AnotherTestResource>(new AnotherTestResource());
 			yetAnotherResource.Res.Save("yetAnotherResource.res");
 			resource.AnotherTestResource = yetAnotherResource;
 
-			_fileEventManager.Raise(m => m.ResourceRenamed += null, new ResourceRenamedEventArgs("yetAnotherResource.res", "test\\yetAnotherResource.res"));
+			RaiseResourceModifiedEvent(resource.Path);
 
+			_fileEventManager.Raise(m => m.ResourceRenamed += null, new ResourceRenamedEventArgs("test\\yetAnotherResource.res", "yetAnotherResource.res"));
+
+			contentPathModifierMock.Verify(x => x.UpdateContentPaths(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()),Times.Never);
 		}
-		
+
+		private Mock<IResourceContentPathModifier> CreateMockPathModifier()
+		{
+			var contentPathModifier = new Mock<IResourceContentPathModifier>();
+			contentPathModifier.Setup(x => x.FindReferencedResources(It.IsAny<string>())).Returns(new List<string>());
+			return contentPathModifier;
+		}
+
 		private void RaiseResourceModifiedEvent(string path)
 		{
 			_fileEventManager.Raise(m => m.ResourceModified += null, new ResourceEventArgs(path));
@@ -186,7 +196,7 @@ namespace DualityEditor.Tests
 
 		private ResourceDatabase CreateResourceDatabase()
 		{
-			return new ResourceDatabase(_fileEventManager.Object);
+			return new ResourceDatabase(_fileEventManager.Object, new XmlResourceContentPathModifier());
 		}
 	}
 

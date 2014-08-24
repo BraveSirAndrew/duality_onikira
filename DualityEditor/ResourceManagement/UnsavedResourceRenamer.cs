@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Duality.Editor
+namespace Duality.Editor.ResourceManagement
 {
 	public class UnsavedResourceRenamer
 	{
