@@ -85,7 +85,7 @@ namespace Duality.Serialization
 
 			base.BeginReadOperation();
 
-			using (XmlReader reader = XmlReader.Create(ReadSingleDocument(this.stream), GetReaderSettings()))
+			using (XmlReader reader = XmlReader.Create(this.stream, GetReaderSettings()))
 			{
 				this.doc = XDocument.Load(reader);
 			}
@@ -333,8 +333,8 @@ namespace Duality.Serialization
 
 			uint objId = objIdString == null ? 0 : XmlConvert.ToUInt32(objIdString);
 
-			DataType dataType = DataType.Unknown;
-			if (!Enum.TryParse<DataType>(dataTypeStr, out dataType))
+			DataType dataType = StringToDataType.Convert(dataTypeStr);
+			if (dataType == DataType.Unknown)
 			{
 				if (dataTypeStr == "Class") // Legacy support (Written 2014-03-10)
 					dataType = DataType.Struct;

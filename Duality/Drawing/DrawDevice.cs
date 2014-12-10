@@ -36,6 +36,7 @@ namespace Duality.Drawing
 		private	int					numRawBatches	= 0;
 		private	ContentRef<RenderTarget> renderTarget = null;
 		private	uint				hndlPrimaryVBO		= 0;
+		private Vector2				nominalViewportSize = new Vector2(1280, 720);
 
 
 		public bool Disposed
@@ -118,6 +119,17 @@ namespace Duality.Drawing
 			get { return this.viewportRect; }
 			set { this.viewportRect = value; }
 		}
+		public Vector2 NominalViewportSize
+		{
+			get { return nominalViewportSize; }
+			set { nominalViewportSize = value; }
+		}
+		/// <summary>
+		/// Viewport scaling will scale all rendering to the nominal viewport size, so if the current viewport is 1920x1080
+		/// for example, and the nominal viewport size is 1280x720, every rendered object will be scaled by 1.5 times. This
+		/// allows games to render to different resolutions without changing the visible area of the game.
+		/// </summary>
+		public bool UseViewportScaling { get; set; }
 		public bool DepthWrite
 		{
 			get { return this.renderMode != RenderMatrix.OrthoScreen; }
@@ -467,7 +479,7 @@ namespace Duality.Drawing
 		public void UpdateMatrices()
 		{
 			Vector2 refSize = this.TargetSize;
-			this.GenerateModelView(out this.matModelView);
+			this.GenerateModelView(new Rect(refSize), out this.matModelView);
 			this.GenerateProjection(new Rect(refSize), out this.matProjection);
 			this.matFinal = this.matModelView * this.MatProjection;
 		}
@@ -539,7 +551,7 @@ namespace Duality.Drawing
 		{
 			this.zSortAccuracy = 10000000.0f / Math.Max(1.0f, Math.Abs(this.farZ - this.nearZ));
 		}
-		private void GenerateModelView(out Matrix4 mvMat)
+		private void GenerateModelView(Rect viewport, out Matrix4 mvMat)
 		{
 			mvMat = Matrix4.Identity;
 			if (this.renderMode == RenderMatrix.OrthoScreen) return;
@@ -548,8 +560,20 @@ namespace Duality.Drawing
 			// Removed: Do this in software now for custom perspective / parallax support
 			// modelViewMat *= Matrix4.CreateTranslation(-this.GameObj.Transform.Pos);
 
+			Matrix4 scaleMatrix = Matrix4.Identity;
+			if (UseViewportScaling)
+			{
+				float scaleX = viewport.W / NominalViewportSize.X;
+				float scaleY = viewport.H / NominalViewportSize.Y;
+				float scale = MathF.Min(scaleX, scaleY);
+
+				float translateX = (viewport.W - (NominalViewportSize.X * scale)) / 2f;
+				float translateY = (viewport.H - (NominalViewportSize.Y * scale)) / 2f;
+
+				scaleMatrix = Matrix4.CreateScale(scale, scale, 1) * Matrix4.CreateTranslation(translateX, -translateY, 0);
+			}
 			// Rotate them according to the camera angle
-			mvMat *= Matrix4.CreateRotationZ(-this.refAngle);
+			mvMat *= scaleMatrix * Matrix4.CreateRotationZ(-this.refAngle);
 		}
 		private void GenerateProjection(Rect orthoAbs, out Matrix4 projMat)
 		{

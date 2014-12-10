@@ -166,6 +166,8 @@
     <Compile Include="ResourceManagement\XmlResourceContentPathModifier.cs" />
     <Compile Include="ResourceManagement\ResourceDatabase.cs" />
     <Compile Include="ResourceManagement\UnsavedResourceRenamer.cs" />
+    <Compile Include="Helpers\HierarchicalContextMenuBuilder.cs" />
+    <Compile Include="Helpers\IEditorCategoryProvider.cs" />
     <Compile Include="Properties\GeneralResCache.cs" />
     <Compile Include="EditorUserData.cs" />
     <Compile Include="Forms\SaveLayoutDialog.cs">

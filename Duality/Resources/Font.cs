@@ -116,6 +116,7 @@ namespace Duality.Resources
 		/// </summary>
 		public static readonly string			SupportedChars	= "? abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890,;.:-_<>|#'+*~@^°!\"§$%&/()=`²³{[]}\\´öäüÖÄÜß";
 		private const string					BodyAscentRef = "acehmnorsuvwxz";
+		private const string					FontAssetPath = "pre-generated-fonts";
 		private static readonly int[]			CharLookup;
 
 		private	static	PrivateFontCollection			fontManager			= new PrivateFontCollection();
@@ -180,6 +181,15 @@ namespace Duality.Resources
 		}
 
 		/// <summary>
+		/// Specifies whether a font's pixmap data is loaded from disk or created on the fly
+		/// </summary>
+		public enum CharacterSet
+		{
+			Dynamic,
+			PreRendered
+		}
+
+		/// <summary>
 		/// Contains data about a single glyph.
 		/// </summary>
 		public struct GlyphData
@@ -215,6 +225,7 @@ namespace Duality.Resources
 		private	float		lineHeightFactor	= 1.0f;
 		private	bool		monospace			= true;
 		private	bool		kerning				= false;
+		private	CharacterSet characters		= CharacterSet.Dynamic;
 		// Embedded custom font family
 		private	byte[]		customFamilyData	= null;
 		// Data that is automatically acquired while loading the font
@@ -413,7 +424,17 @@ namespace Duality.Resources
 			get { return this.baseLine; }
 		}
 
-		
+		public CharacterSet Characters
+		{
+			get { return this.characters; }
+			set
+			{
+				this.characters = value;
+				RemoveDynamicAssets();
+				this.needsReload = true;
+			}
+		}
+
 		/// <summary>
 		/// Sets up a new Font.
 		/// </summary>
@@ -638,7 +659,52 @@ namespace Duality.Resources
 			int rows;
 			cols = rows = (int)Math.Ceiling(Math.Sqrt(SupportedChars.Length));
 
-			Pixmap.Layer pixelLayer = new Pixmap.Layer(MathF.RoundToInt(cols * this.internalFont.Size * 1.2f), MathF.RoundToInt(rows * this.internalFont.Height * 1.2f));
+			LoadOrCreatePixelData(cols, rows, textRenderingHint);
+
+			// Determine Font properties
+			this.height = this.internalFont.Height;
+			this.ascent = (int)Math.Round(this.internalFont.FontFamily.GetCellAscent(this.internalFont.Style) * this.internalFont.Size / this.internalFont.FontFamily.GetEmHeight(this.internalFont.Style));
+			this.bodyAscent /= BodyAscentRef.Length;
+			this.descent = (int)Math.Round(this.internalFont.FontFamily.GetCellDescent(this.internalFont.Style) * this.internalFont.GetHeight() / this.internalFont.FontFamily.GetLineSpacing(this.internalFont.Style));
+			this.baseLine = (int)Math.Round(this.internalFont.FontFamily.GetCellAscent(this.internalFont.Style) * this.internalFont.GetHeight() / this.internalFont.FontFamily.GetLineSpacing(this.internalFont.Style));
+
+			// Create internal Texture Resource
+			this.texture = new Texture(this.pixelData, 
+				Texture.SizeMode.Enlarge, 
+				this.IsPixelGridAligned ? TextureMagFilter.Nearest : TextureMagFilter.Linear,
+				this.IsPixelGridAligned ? TextureMinFilter.Nearest : TextureMinFilter.LinearMipmapLinear);
+
+			// Select DrawTechnique to use
+			ContentRef<DrawTechnique> technique;
+			if (this.renderMode == RenderMode.MonochromeBitmap)
+				technique = DrawTechnique.Mask;
+			else if (this.renderMode == RenderMode.GrayscaleBitmap)
+				technique = DrawTechnique.Alpha;
+			else if (this.renderMode == RenderMode.SmoothBitmap)
+				technique = DrawTechnique.Alpha;
+			else
+				technique = DrawTechnique.SharpAlpha;
+
+			// Create and configure internal BatchInfo
+			BatchInfo matInfo = new BatchInfo(technique, ColorRgba.White, this.texture);
+			if (technique == DrawTechnique.SharpAlpha)
+			{
+				matInfo.SetUniform("smoothness", this.size * 3.0f);
+			}
+			this.mat = new Material(matInfo);
+		}
+
+		private void LoadOrCreatePixelData(int cols, int rows, TextRenderingHint textRenderingHint)
+		{
+			if (this.characters == CharacterSet.PreRendered)
+			{
+				if (File.Exists(GetPreGeneratedAssetPath()))
+				{
+					this.pixelData = Load<Pixmap>(GetPreGeneratedAssetPath());
+				}
+			}
+
+			Pixmap.Layer pixelLayer = new Pixmap.Layer(MathF.RoundToInt(cols*this.internalFont.Size*1.2f), MathF.RoundToInt(rows*this.internalFont.Height*1.2f));
 			Pixmap.Layer glyphTemp;
 			Pixmap.Layer glyphTempTypo;
 			Bitmap bm;
@@ -671,7 +737,7 @@ namespace Duality.Resources
 						glyphGraphics.DrawString(str, this.internalFont, fntBrush, new RectangleF(0, 0, bm.Width, bm.Height), formatDef);
 					}
 					glyphTemp = new Pixmap.Layer(bm);
-					
+
 					// Rasterize a single glyph in typographic mode for metric analysis
 					if (!isSpace)
 					{
@@ -679,8 +745,8 @@ namespace Duality.Resources
 						glyphTemp.SubImage(glyphTempBounds.X, 0, glyphTempBounds.Width, glyphTemp.Height);
 						if (BodyAscentRef.Contains(SupportedChars[i]))
 							this.bodyAscent += glyphTempBounds.Height;
-						
-						bm = new Bitmap((int)Math.Ceiling(Math.Max(1, charSize.Width)), this.internalFont.Height + 1);
+
+						bm = new Bitmap((int) Math.Ceiling(Math.Max(1, charSize.Width)), this.internalFont.Height + 1);
 						using (Graphics glyphGraphics = Graphics.FromImage(bm))
 						{
 							glyphGraphics.Clear(Color.Transparent);
@@ -699,9 +765,9 @@ namespace Duality.Resources
 					if (x + glyphTemp.Width + 2 > pixelLayer.Width)
 					{
 						x = 1;
-						y += this.internalFont.Height + MathF.Clamp((int)MathF.Ceiling(this.internalFont.Height * 0.1875f), 3, 10);
+						y += this.internalFont.Height + MathF.Clamp((int) MathF.Ceiling(this.internalFont.Height*0.1875f), 3, 10);
 					}
-					
+
 					// Memorize atlas coordinates & glyph data
 					this.maxGlyphWidth = Math.Max(this.maxGlyphWidth, glyphTemp.Width);
 					this.glyphs[i].width = glyphTemp.Width;
@@ -720,7 +786,7 @@ namespace Duality.Resources
 					// Draw it onto the font surface
 					glyphTemp.DrawOnto(pixelLayer, BlendMode.Solid, x, y);
 
-					x += glyphTemp.Width + MathF.Clamp((int)MathF.Ceiling(this.internalFont.Height * 0.125f), 2, 10);
+					x += glyphTemp.Width + MathF.Clamp((int) MathF.Ceiling(this.internalFont.Height*0.125f), 2, 10);
 				}
 			}
 
@@ -731,40 +797,12 @@ namespace Duality.Resources
 				pixelLayer.Data[i].G = 255;
 				pixelLayer.Data[i].B = 255;
 			}
-
-			// Determine Font properties
-			this.height = this.internalFont.Height;
-			this.ascent = (int)Math.Round(this.internalFont.FontFamily.GetCellAscent(this.internalFont.Style) * this.internalFont.Size / this.internalFont.FontFamily.GetEmHeight(this.internalFont.Style));
-			this.bodyAscent /= BodyAscentRef.Length;
-			this.descent = (int)Math.Round(this.internalFont.FontFamily.GetCellDescent(this.internalFont.Style) * this.internalFont.GetHeight() / this.internalFont.FontFamily.GetLineSpacing(this.internalFont.Style));
-			this.baseLine = (int)Math.Round(this.internalFont.FontFamily.GetCellAscent(this.internalFont.Style) * this.internalFont.GetHeight() / this.internalFont.FontFamily.GetLineSpacing(this.internalFont.Style));
-
-			// Create internal Pixmap and Texture Resources
+			
 			this.pixelData = new Pixmap(pixelLayer);
 			this.pixelData.Atlas = new List<Rect>(atlas);
-			this.texture = new Texture(this.pixelData, 
-				Texture.SizeMode.Enlarge, 
-				this.IsPixelGridAligned ? TextureMagFilter.Nearest : TextureMagFilter.Linear,
-				this.IsPixelGridAligned ? TextureMinFilter.Nearest : TextureMinFilter.LinearMipmapLinear);
 
-			// Select DrawTechnique to use
-			ContentRef<DrawTechnique> technique;
-			if (this.renderMode == RenderMode.MonochromeBitmap)
-				technique = DrawTechnique.Mask;
-			else if (this.renderMode == RenderMode.GrayscaleBitmap)
-				technique = DrawTechnique.Alpha;
-			else if (this.renderMode == RenderMode.SmoothBitmap)
-				technique = DrawTechnique.Alpha;
-			else
-				technique = DrawTechnique.SharpAlpha;
-
-			// Create and configure internal BatchInfo
-			BatchInfo matInfo = new BatchInfo(technique, ColorRgba.White, this.texture);
-			if (technique == DrawTechnique.SharpAlpha)
-			{
-				matInfo.SetUniform("smoothness", this.size * 3.0f);
-			}
-			this.mat = new Material(matInfo);
+			if(this.characters == CharacterSet.PreRendered)
+				this.pixelData.Save(GetPreGeneratedAssetPath());
 		}
 
 		/// <summary>
@@ -1228,6 +1266,20 @@ namespace Duality.Resources
 			c.kerning = this.kerning;
 			c.spacing = this.spacing;
 			c.ReloadData();
+		}
+
+		private void RemoveDynamicAssets()
+		{
+			if (string.IsNullOrEmpty(this.Path))
+				return;
+
+			if (File.Exists(GetPreGeneratedAssetPath()))
+				File.Delete(GetPreGeneratedAssetPath());
+		}
+
+		private string GetPreGeneratedAssetPath()
+		{
+			return System.IO.Path.Combine(System.IO.Path.GetDirectoryName(this.Path), FontAssetPath, this.Name + Pixmap.FileExt);
 		}
 
 		/// <summary>

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.IO.Compression;
 using System.Linq;
 using System.Collections.Generic;
@@ -6,6 +7,7 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Duality.Drawing;
 using Duality.Editor;
@@ -417,7 +419,14 @@ namespace Duality.Resources
 
 				unchecked
 				{
-					Parallel.For(0, this.data.Length, i => this.data[i].SetIntArgb(pixelData[i]));
+					var partitioner = Partitioner.Create(0, this.data.Length);
+					Parallel.ForEach(partitioner, (range, loopstate) =>
+					{
+						for (var i = range.Item1; i < range.Item2; i++)
+						{
+							this.data[i].SetIntArgb(pixelData[i]);
+						}
+					});
 				}
 			}
 
@@ -592,62 +601,69 @@ namespace Duality.Resources
 			/// </summary>
 			public void ColorTransparentPixels()
 			{
-				Point	pos		= new Point();
-				int[]	nPos	= new int[8];
-				bool[]	nOk		= new bool[8];
-				int[]	mixClr	= new int[4];
+				var dataCopy = new ColorRgba[this.data.Length];
+				Array.Copy(this.data, dataCopy, this.data.Length);
 
-				for (int i = 0; i < this.data.Length; i++)
+				var partitioner = Partitioner.Create(0, this.data.Length);
+				Parallel.ForEach(partitioner, (range, loopstate) =>
 				{
-					if (this.data[i].A != 0) continue;
+					Point pos = new Point();
+					int[] nPos = new int[8];
+					bool[] nOk = new bool[8];
+					int[] mixClr = new int[4];
 
-					pos.Y	= i / this.width;
-					pos.X	= i - (pos.Y * this.width);
-
-					mixClr[0] = 0;
-					mixClr[1] = 0;
-					mixClr[2] = 0;
-					mixClr[3] = 0;
-
-					nPos[0] = i - this.width;
-					nPos[1] = i + this.width;
-					nPos[2] = i - 1;
-					nPos[3] = i + 1;
-					nPos[4] = i - this.width - 1;
-					nPos[5] = i + this.width - 1;
-					nPos[6] = i - this.width + 1;
-					nPos[7] = i + this.width + 1;
-
-					nOk[0]	= pos.Y > 0;
-					nOk[1]	= pos.Y < this.height - 1;
-					nOk[2]	= pos.X > 0;
-					nOk[3]	= pos.X < this.width - 1;
-					nOk[4]	= nOk[2] && nOk[0];
-					nOk[5]	= nOk[2] && nOk[1];
-					nOk[6]	= nOk[3] && nOk[0];
-					nOk[7]	= nOk[3] && nOk[1];
-
-					int nMult = 2;
-					for (int j = 0; j < 8; j++)
+					for (int i = range.Item1; i < range.Item2; i++)
 					{
-						if (!nOk[j]) continue;
-						if (this.data[nPos[j]].A == 0) continue;
+						if (dataCopy[i].A != 0) return;
 
-						mixClr[0] += this.data[nPos[j]].R * nMult;
-						mixClr[1] += this.data[nPos[j]].G * nMult;
-						mixClr[2] += this.data[nPos[j]].B * nMult;
-						mixClr[3] += nMult;
+						pos.Y = i/this.width;
+						pos.X = i - (pos.Y*this.width);
 
-						if (j > 3) nMult = 1;
+						mixClr[0] = 0;
+						mixClr[1] = 0;
+						mixClr[2] = 0;
+						mixClr[3] = 0;
+
+						nPos[0] = i - this.width;
+						nPos[1] = i + this.width;
+						nPos[2] = i - 1;
+						nPos[3] = i + 1;
+						nPos[4] = i - this.width - 1;
+						nPos[5] = i + this.width - 1;
+						nPos[6] = i - this.width + 1;
+						nPos[7] = i + this.width + 1;
+
+						nOk[0] = pos.Y > 0;
+						nOk[1] = pos.Y < this.height - 1;
+						nOk[2] = pos.X > 0;
+						nOk[3] = pos.X < this.width - 1;
+						nOk[4] = nOk[2] && nOk[0];
+						nOk[5] = nOk[2] && nOk[1];
+						nOk[6] = nOk[3] && nOk[0];
+						nOk[7] = nOk[3] && nOk[1];
+
+						int nMult = 2;
+						for (int j = 0; j < 8; j++)
+						{
+							if (!nOk[j]) continue;
+							if (dataCopy[nPos[j]].A == 0) continue;
+
+							mixClr[0] += dataCopy[nPos[j]].R*nMult;
+							mixClr[1] += dataCopy[nPos[j]].G*nMult;
+							mixClr[2] += dataCopy[nPos[j]].B*nMult;
+							mixClr[3] += nMult;
+
+							if (j > 3) nMult = 1;
+						}
+
+						if (mixClr[3] > 0)
+						{
+							this.data[i].R = (byte) Math.Round(mixClr[0]/(float) mixClr[3]);
+							this.data[i].G = (byte) Math.Round(mixClr[1]/(float) mixClr[3]);
+							this.data[i].B = (byte) Math.Round(mixClr[2]/(float) mixClr[3]);
+						}
 					}
-
-					if (mixClr[3] > 0)
-					{
-						this.data[i].R = (byte)Math.Round((float)mixClr[0] / (float)mixClr[3]);
-						this.data[i].G = (byte)Math.Round((float)mixClr[1] / (float)mixClr[3]);
-						this.data[i].B = (byte)Math.Round((float)mixClr[2] / (float)mixClr[3]);
-					}
-				}
+				});
 			}
 			/// <summary>
 			/// Sets the color of all transparent pixels to the specified color.
@@ -1115,7 +1131,10 @@ namespace Duality.Resources
 
 						if (DualityApp.ExecContext == DualityApp.ExecutionContext.Editor)
 						{
-							SetPixelDataRgba(Squish.DecompressImage(dxtData, width, height, SquishFlags.Dxt5), width, height);
+							Squish.DecompressImage(dxtData, width, height, SquishFlags.Dxt5).AsColourArray(arr =>
+							{
+								this.data = arr;
+							});
 						}
 						this.compressedData = dxtData;
 					}
@@ -1278,7 +1297,6 @@ namespace Duality.Resources
 		public Pixmap(string imagePath)
 		{
 			this.LoadPixelData(imagePath);
-			ColourTransparentPixels();
 		}
 
 		/// <summary>
@@ -1462,6 +1480,114 @@ namespace Duality.Resources
 			c.atlas = this.atlas == null ? null : new List<Rect>(this.atlas);
 			c.animCols = this.animCols;
 			c.animRows = this.animRows;
+		}
+	}
+
+	public static unsafe class FastArraySerializer
+	{
+		[StructLayout(LayoutKind.Explicit)]
+		private struct Union
+		{
+			[FieldOffset(0)] public byte[] bytes;
+			[FieldOffset(0)] public ColorRgba[] colours;
+		}
+
+		[StructLayout(LayoutKind.Sequential, Pack = 1)]
+		private struct ArrayHeader
+		{
+			public UIntPtr type;
+			public UIntPtr length;
+		}
+
+		private static readonly UIntPtr ByteArrayType;
+		private static readonly UIntPtr ColourArrayType;
+
+		static FastArraySerializer()
+		{
+			fixed (void* pBytes = new byte[1])
+			fixed (void* pColour = new ColorRgba[1])
+			{
+				ByteArrayType = GetHeader(pBytes)->type;
+				ColourArrayType = GetHeader(pColour)->type;
+			}
+		}
+
+		public static void AsByteArray(this ColorRgba[] colours, Action<byte[]> action)
+		{
+			if (colours.HandleNullOrEmptyArray(action)) 
+				return;
+
+			var union = new Union {colours = colours};
+			union.colours.ToByteArray();
+			try
+			{
+				action(union.bytes);
+			}
+			finally
+			{
+				union.bytes.ToColourArray();
+			}
+		}
+
+		public static void AsColourArray(this byte[] bytes, Action<ColorRgba[]> action)
+		{
+			if (bytes.HandleNullOrEmptyArray(action))
+				return;
+
+			var union = new Union {bytes = bytes};
+			union.bytes.ToColourArray();
+			try
+			{
+				action(union.colours);
+			}
+			finally
+			{
+				union.colours.ToByteArray();
+			}
+		}
+
+		public static bool HandleNullOrEmptyArray<TSrc,TDst>(this TSrc[] array, Action<TDst[]> action)
+		{
+			if (array == null)
+			{
+				action(null);
+				return true;
+			}
+
+			if (array.Length == 0)
+			{
+				action(new TDst[0]);
+				return true;
+			}
+
+			return false;
+		}
+
+		private static ArrayHeader* GetHeader(void* pBytes)
+		{
+			return (ArrayHeader*)pBytes - 1;
+		}
+
+		private static void ToColourArray(this byte[] bytes)
+		{
+			fixed (void* pArray = bytes)
+			{
+				var pHeader = GetHeader(pArray);
+
+				pHeader->type = ColourArrayType;
+				pHeader->length = (UIntPtr)(bytes.Length / sizeof(ColorRgba));
+			}
+		}
+
+		private static void ToByteArray(this ColorRgba[] colours)
+		{
+			fixed(void* pArray = colours)
+			{
+				var pHeader = GetHeader(pArray);
+
+				pHeader->type = ByteArrayType;
+				pHeader->length = (UIntPtr)(colours.Length * sizeof(ColorRgba));
+			}
 		}
 	}
 }

@@ -6,7 +6,7 @@ using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
 using System.IO;
-
+using Duality.Editor.Helpers;
 using WeifenLuo.WinFormsUI.Docking;
 using Aga.Controls.Tree;
 
@@ -877,7 +877,7 @@ namespace Duality.Editor.Plugins.ProjectView
 			// Load their Resource data, if not loaded yet
 			Resource[] selRes = (
 				from rn in selResNode
-				where rn.ResLink.IsAvailable
+				where rn.ResType != typeof(Scene) && rn.ResLink.IsAvailable
 				select rn.ResLink.Res
 				).ToArray();
 
@@ -1351,49 +1351,12 @@ namespace Duality.Editor.Plugins.ProjectView
 			else
 				this.toolStripSeparatorCustomActions.Visible = false;
 
-			// Reset "New" menu to original state
-			List<ToolStripItem> oldItems = new List<ToolStripItem>(this.newToolStripMenuItem.DropDownItems.OfType<ToolStripItem>());
-			this.newToolStripMenuItem.DropDownItems.Clear();
-			foreach (ToolStripItem item in oldItems.Skip(2)) item.Dispose();
-			this.newToolStripMenuItem.DropDownItems.AddRange(oldItems.Take(2).ToArray());
-			
-			// Create dynamic entries
-			List<ToolStripItem> newItems = new List<ToolStripItem>();
-			foreach (Type resType in this.QueryResourceTypes())
-			{
-				// Generate category item
-				string[] category = resType.GetEditorCategory();
-				ToolStripMenuItem categoryItem = this.newToolStripMenuItem;
-				for (int i = 0; i < category.Length; i++)
-				{
-					ToolStripMenuItem subCatItem;
-					if (categoryItem == this.newToolStripMenuItem)
-						subCatItem = newItems.FirstOrDefault(item => item.Name == category[i]) as ToolStripMenuItem;
-					else
-						subCatItem = categoryItem.DropDownItems.Find(category[i], false).FirstOrDefault() as ToolStripMenuItem;
-
-					if (subCatItem == null)
-					{
-						subCatItem = new ToolStripMenuItem(category[i]);
-						subCatItem.Name = category[i];
-						subCatItem.Tag = resType.Assembly;
-						subCatItem.DropDownItemClicked += this.newToolStripMenuItem_DropDownItemClicked;
-						if (categoryItem == this.newToolStripMenuItem)
-							InsertToolStripTypeItem(newItems, subCatItem);
-						else
-							InsertToolStripTypeItem(categoryItem.DropDownItems, subCatItem);
-					}
-					categoryItem = subCatItem;
-				}
-
-				ToolStripMenuItem resTypeItem = new ToolStripMenuItem(resType.Name, ResourceNode.GetTypeImage(resType));
-				resTypeItem.Tag = resType;
-				if (categoryItem == this.newToolStripMenuItem)
-					InsertToolStripTypeItem(newItems, resTypeItem);
-				else
-					InsertToolStripTypeItem(categoryItem.DropDownItems, resTypeItem);
-			}
-			this.newToolStripMenuItem.DropDownItems.AddRange(newItems.ToArray());
+			HierarchicalContextMenuBuilder.CreateHierarchicalContextMenuItemsFromTypes(
+				this.newToolStripMenuItem, 
+				this.QueryResourceTypes(), 
+				t => ResourceNode.GetTypeImage(t), 
+				this.newToolStripMenuItem_DropDownItemClicked,
+				new DefaultEditorCategoryProvider());
 		}
 
 		private void cutToolStripMenuItem_Click(object sender, EventArgs e)
@@ -1671,53 +1634,6 @@ namespace Duality.Editor.Plugins.ProjectView
 				Duality.Editor.Plugins.ProjectView.Properties.ProjectViewRes.ProjectFolderView_Help_Doubleclick,
 				action.Description);
 			else return null;
-		}
-
-		private static void InsertToolStripTypeItem(System.Collections.IList items, ToolStripItem newItem)
-		{
-			ToolStripItem item2 = newItem;
-			ToolStripMenuItem menuItem2 = item2 as ToolStripMenuItem;
-			for (int i = 0; i < items.Count; i++)
-			{
-				ToolStripItem item1 = items[i] as ToolStripItem;
-				ToolStripMenuItem menuItem1 = item1 as ToolStripMenuItem;
-				if (item1 == null)
-					continue;
-
-				bool item1IsType = item1.Tag is Type;
-				bool item2IsType = item2.Tag is Type;
-				System.Reflection.Assembly assembly1 = item1.Tag is Type ? (item1.Tag as Type).Assembly : item1.Tag as System.Reflection.Assembly;
-				System.Reflection.Assembly assembly2 = item2.Tag is Type ? (item2.Tag as Type).Assembly : item2.Tag as System.Reflection.Assembly;
-				int result = 
-					(assembly2 == typeof(DualityApp).Assembly ? 1 : 0) - 
-					(assembly1 == typeof(DualityApp).Assembly ? 1 : 0);
-				if (result > 0)
-				{
-					items.Insert(i, newItem);
-					return;
-				}
-				else if (result != 0) continue;
-
-				result = 
-					(item2IsType ? 1 : 0) - 
-					(item1IsType ? 1 : 0);
-				if (result > 0)
-				{
-					items.Insert(i, newItem);
-					return;
-				}
-				else if (result != 0) continue;
-
-				result = string.Compare(item1.Text, item2.Text);
-				if (result > 0)
-				{
-					items.Insert(i, newItem);
-					return;
-				}
-				else if (result != 0) continue;
-			}
-
-			items.Add(newItem);
 		}
 	}
 }

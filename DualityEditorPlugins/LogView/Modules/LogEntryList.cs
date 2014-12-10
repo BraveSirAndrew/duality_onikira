@@ -581,6 +581,9 @@ namespace Duality.Editor.Plugins.LogView
 			if (this.SelectedEntry != null)
 			{
 				this.entryMenu_CopyItem_Click(this, EventArgs.Empty);
+
+				if(this.SelectedEntry.LogEntry.GameObject != null)
+					DualityEditorApp.Highlight(this, new ObjectSelection(this.SelectedEntry.LogEntry.GameObject), HighlightMode.All);
 			}
 		}
 		protected override void OnPreviewKeyDown(PreviewKeyDownEventArgs e)

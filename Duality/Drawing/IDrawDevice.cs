@@ -56,6 +56,11 @@ namespace Duality.Drawing
 
 		Matrix4 MatProjection { get; }
 		bool IsRenderTargetActive { get; }
+		/// <summary>
+		/// Used when viewport scaling is active. Setting this to a wide-screen value (1280x720, 1920x1080 etc) will result
+		/// in black bars on the left and right of the screen when a non-widescreen target resolution is set.
+		/// </summary>
+		Vector2 NominalViewportSize { get; set; }
 
 
 		/// <summary>

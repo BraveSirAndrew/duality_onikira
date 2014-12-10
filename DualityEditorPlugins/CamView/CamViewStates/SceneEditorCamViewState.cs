@@ -72,28 +72,28 @@ namespace Duality.Editor.Plugins.CamView.CamViewStates
 				this.gameObj = obj;
 			}
 
-			public override bool IsActionAvailable(ObjectAction action)
+			public override bool IsActionAvailable(IObjectAction action)
 			{
-				if (action == ObjectAction.Move ||
-					action == ObjectAction.Rotate ||
-					action == ObjectAction.Scale)
+				if (action is MoveObjectAction ||
+					action is RotateObjectAction ||
+					action is ScaleObjectAction)
 					return this.HasTransform;
 				return false;
 			}
-			public override string UpdateActionText(ObjectAction action, bool performing)
+			public override string UpdateActionText(IObjectAction action, bool performing)
 			{
-				if (action == ObjectAction.Move)
+				if (action is MoveObjectAction)
 				{
 					return
 						string.Format("X:{0,7:0}/n", this.gameObj.Transform.RelativePos.X) +
 						string.Format("Y:{0,7:0}/n", this.gameObj.Transform.RelativePos.Y) +
 						string.Format("Z:{0,7:0}", this.gameObj.Transform.RelativePos.Z);
 				}
-				else if (action == ObjectAction.Scale)
+				else if (action is ScaleObjectAction)
 				{
 					return string.Format("Scale:{0,5:0.00}", this.gameObj.Transform.RelativeScale);
 				}
-				else if (action == ObjectAction.Rotate)
+				else if (action is RotateObjectAction)
 				{
 					return string.Format("Angle:{0,5:0}°", MathF.RadToDeg(this.gameObj.Transform.RelativeAngle));
 				}
@@ -160,7 +160,7 @@ namespace Duality.Editor.Plugins.CamView.CamViewStates
 		protected override void OnCollectStateOverlayDrawcalls(Canvas canvas)
 		{
 			base.OnCollectStateOverlayDrawcalls(canvas);
-			if (this.SelObjAction == ObjectAction.None && this.DragMustWait && !this.dragLastLoc.IsEmpty)
+			if (this.SelObjAction is NullObjectAction && this.DragMustWait && !this.dragLastLoc.IsEmpty)
 			{
 				canvas.PushState();
 				canvas.State.SetMaterial(new BatchInfo(DrawTechnique.Alpha, ColorRgba.White));
@@ -206,17 +206,17 @@ namespace Duality.Editor.Plugins.CamView.CamViewStates
 			base.SelectObjects(selObjEnum, mode);
 			DualityEditorApp.Select(this, new ObjectSelection(selObjEnum.Select(s => s.ActualObject)), mode);
 		}
-		protected override void PostPerformAction(IEnumerable<CamViewState.SelObj> selObjEnum, CamViewState.ObjectAction action)
+		protected override void PostPerformAction(IEnumerable<CamViewState.SelObj> selObjEnum, IObjectAction action)
 		{
 			base.PostPerformAction(selObjEnum, action);
-			if (action == ObjectAction.Move)
+			if (action is MoveObjectAction)
 			{
 				DualityEditorApp.NotifyObjPropChanged(
 					this,
 					new ObjectSelection(selObjEnum.Select(s => (s.ActualObject as GameObject).Transform)),
 					ReflectionInfo.Property_Transform_RelativePos);
 			}
-			else if (action == ObjectAction.Rotate)
+			else if (action is RotateObjectAction)
 			{
 				DualityEditorApp.NotifyObjPropChanged(
 					this,
@@ -224,7 +224,7 @@ namespace Duality.Editor.Plugins.CamView.CamViewStates
 					ReflectionInfo.Property_Transform_RelativePos,
 					ReflectionInfo.Property_Transform_RelativeAngle);
 			}
-			else if (action == ObjectAction.Scale)
+			else if (action is ScaleObjectAction)
 			{
 				DualityEditorApp.NotifyObjPropChanged(
 					this,
@@ -282,7 +282,7 @@ namespace Duality.Editor.Plugins.CamView.CamViewStates
 			this.dragLastLoc = Point.Empty;
 			this.dragTime = DateTime.Now;
 			this.Invalidate();
-			if (this.SelObjAction == ObjectAction.None) return;
+			if (this.SelObjAction is NullObjectAction) return;
 			
 			this.EndAction();
 
@@ -300,7 +300,7 @@ namespace Duality.Editor.Plugins.CamView.CamViewStates
 			base.OnDragOver(e);
 
 			if (e.Effect == DragDropEffects.None) return;
-			if (this.SelObjAction == ObjectAction.None && !this.DragMustWait)
+			if (this.SelObjAction is NullObjectAction && !this.DragMustWait)
 				this.DragBeginAction(e);
 			
 			Point clientCoord = this.PointToClient(new Point(e.X, e.Y));
@@ -309,22 +309,22 @@ namespace Duality.Editor.Plugins.CamView.CamViewStates
 			this.dragLastLoc = clientCoord;
 			this.Invalidate();
 
-			if (this.SelObjAction != ObjectAction.None) this.UpdateAction();
+			if (!(this.SelObjAction is NullObjectAction)) this.UpdateAction();
 		}
 		protected override void OnDragDrop(DragEventArgs e)
 		{
 			base.OnDragDrop(e);
 
-			if (this.SelObjAction == ObjectAction.None)
+			if (this.SelObjAction is NullObjectAction)
 			{
 				this.DragBeginAction(e);
-				if (this.SelObjAction != ObjectAction.None) this.UpdateAction();
+				if (!(this.SelObjAction is NullObjectAction)) this.UpdateAction();
 			}
 			
 			this.dragLastLoc = Point.Empty;
 			this.dragTime = DateTime.Now;
 
-			if (this.SelObjAction != ObjectAction.None) this.EndAction();
+			if (!(this.SelObjAction is NullObjectAction)) this.EndAction();
 
 			UndoRedoManager.EndMacro();
 		}
@@ -360,7 +360,7 @@ namespace Duality.Editor.Plugins.CamView.CamViewStates
 				// Select them & begin action
 				this.selBeforeDrag = DualityEditorApp.Selection;
 				this.SelectObjects(createAction.Result.Select(g => new SelGameObj(g) as SelObj));
-				this.BeginAction(ObjectAction.Move);
+				this.BeginAction(new MoveObjectAction());
 
 				// Get focused
 				this.Focus();

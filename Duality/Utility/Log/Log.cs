@@ -175,7 +175,7 @@ namespace Duality
 			this.state.Indent--;
 		}
 
-		private void Write(LogMessageType type, string format, params object[] obj)
+		private void Write(LogMessageType type, string format, object context)
 		{
 			Profile.TimeLog.BeginMeasure();
 
@@ -191,7 +191,7 @@ namespace Duality
 			{
 				try
 				{
-					log.Write(this, type, string.Format(format, obj));
+					log.Write(this, type, format, context);
 				}
 				catch (Exception)
 				{
@@ -231,7 +231,7 @@ namespace Duality
 		/// <param name="obj"></param>
 		public void Write(string format, params object[] obj)
 		{
-			this.Write(LogMessageType.Message, this.FormatMessage(format, obj));
+			this.Write(LogMessageType.Message, this.FormatMessage(format, obj), obj.FirstOrDefault(o => o is GameObject));
 		}
 		/// <summary>
 		/// Writes a new warning log entry.
@@ -240,7 +240,7 @@ namespace Duality
 		/// <param name="obj"></param>
 		public void WriteWarning(string format, params object[] obj)
 		{
-			this.Write(LogMessageType.Warning, this.FormatMessage(format, obj));
+			this.Write(LogMessageType.Warning, this.FormatMessage(format, obj), obj.FirstOrDefault(o => o is GameObject));
 		}
 		/// <summary>
 		/// Writes a new error log entry.
@@ -249,7 +249,7 @@ namespace Duality
 		/// <param name="obj"></param>
 		public void WriteError(string format, params object[] obj)
 		{
-			this.Write(LogMessageType.Error, this.FormatMessage(format, obj));
+			this.Write(LogMessageType.Error, this.FormatMessage(format, obj), obj.FirstOrDefault(o => o is GameObject));
 		}
 
 		/// <summary>
@@ -483,6 +483,7 @@ namespace Duality
 		/// <param name="source">The <see cref="Log"/> from which the message originates.</param>
 		/// <param name="type">The type of the log message.</param>
 		/// <param name="msg">The message to write.</param>
-		void Write(Log source, LogMessageType type, string msg);
+		/// <param name="context1"></param>
+		void Write(Log source, LogMessageType type, string msg, object context);
 	}
 }

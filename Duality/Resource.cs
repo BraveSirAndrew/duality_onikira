@@ -35,7 +35,14 @@ namespace Duality
 		public static event EventHandler<ResourceEventArgs>	ResourceLoaded = null;
 		public static event EventHandler<ResourceSaveEventArgs>	ResourceSaved = null;
 		public static event EventHandler<ResourceSaveEventArgs>	ResourceSaving = null;
-		
+
+		/// <summary>
+		/// Set this to true to avoid initializing resources during load operations. Load already provides a parameter
+		/// called initResource which works for single resource calls but some resources cause yet more resources to
+		/// load recursively, and this flag is useful in those situations.
+		/// </summary>
+		public static bool BlockAllInits { get; set; }
+
 		/// <summary>
 		/// The path of the file from which the Resource has been originally imported or initialized.
 		/// </summary>
@@ -399,7 +406,7 @@ namespace Duality
 				res.initState = InitState.Initializing;
 				res.path = resPath;
 				if (loadCallback != null) loadCallback(res as T); // Callback before initializing.
-				if (initResource) Init(res);
+				if (initResource && BlockAllInits == false) Init(res);
 				newContent = res as T;
 			}
 			catch (Exception e)

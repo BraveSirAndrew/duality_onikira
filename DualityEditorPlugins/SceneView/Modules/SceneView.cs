@@ -6,6 +6,7 @@ using System.Windows.Forms;
 using System.IO;
 using System.Globalization;
 using System.Xml.Linq;
+using Duality.Editor.Helpers;
 using CancelEventHandler = System.ComponentModel.CancelEventHandler;
 using CancelEventArgs = System.ComponentModel.CancelEventArgs;
 
@@ -1349,57 +1350,25 @@ namespace Duality.Editor.Plugins.SceneView
 			else
 				this.toolStripSeparatorCustomActions.Visible = false;
 
-			// Reset "New" menu to original state
 			this.gameObjectToolStripMenuItem.Image = typeof(GameObject).GetEditorImage();
-			List<ToolStripItem> oldItems = new List<ToolStripItem>(this.newToolStripMenuItem.DropDownItems.OfType<ToolStripItem>());
-			this.newToolStripMenuItem.DropDownItems.Clear();
-			foreach (ToolStripItem item in oldItems.Skip(2)) item.Dispose();
-			this.newToolStripMenuItem.DropDownItems.AddRange(oldItems.Take(2).ToArray());
 
-			// Populate the "New" menu
-			List<ToolStripItem> newItems = new List<ToolStripItem>();
-			foreach (Type cmpType in DualityApp.GetAvailDualityTypes(typeof(Component)))
-			{
-				// Omit abstract and invisible Component Types
-				if (cmpType.IsAbstract) continue;
-				EditorHintFlagsAttribute editorHintFlags = cmpType.GetCustomAttributes<EditorHintFlagsAttribute>().FirstOrDefault();
-				if (editorHintFlags != null && editorHintFlags.Flags.HasFlag(MemberFlags.Invisible)) continue;
-
-				// Generate category item
-				string[] category = cmpType.GetEditorCategory();
-				ToolStripMenuItem categoryItem = this.newToolStripMenuItem;
-				for (int i = 0; i < category.Length; i++)
+			// Omit abstract and invisible Component Types
+			var cmpTypes = DualityApp.GetAvailDualityTypes(typeof (Component))
+				.Where(t => !t.IsAbstract)
+				.Where(t =>
 				{
-					ToolStripMenuItem subCatItem;
-					if (categoryItem == this.newToolStripMenuItem)
-						subCatItem = newItems.FirstOrDefault(item => item.Name == category[i]) as ToolStripMenuItem;
-					else
-						subCatItem = categoryItem.DropDownItems.Find(category[i], false).FirstOrDefault() as ToolStripMenuItem;
-
-					if (subCatItem == null)
-					{
-						subCatItem = new ToolStripMenuItem(category[i]);
-						subCatItem.Name = category[i];
-						subCatItem.Tag = cmpType.Assembly;
-						subCatItem.DropDownItemClicked += this.newToolStripMenuItem_DropDownItemClicked;
-						if (categoryItem == this.newToolStripMenuItem)
-							InsertToolStripTypeItem(newItems, subCatItem);
-						else
-							InsertToolStripTypeItem(categoryItem.DropDownItems, subCatItem);
-					}
-					categoryItem = subCatItem;
-				}
-
-				ToolStripMenuItem cmpTypeItem = new ToolStripMenuItem(cmpType.Name, ComponentNode.GetTypeImage(cmpType));
-				cmpTypeItem.Tag = cmpType;
-				if (categoryItem == this.newToolStripMenuItem)
-					InsertToolStripTypeItem(newItems, cmpTypeItem);
-				else
-					InsertToolStripTypeItem(categoryItem.DropDownItems, cmpTypeItem);
-			}
-
-			this.newToolStripMenuItem.DropDownItems.AddRange(newItems.ToArray());
+					EditorHintFlagsAttribute editorHintFlags = t.GetCustomAttributes<EditorHintFlagsAttribute>().FirstOrDefault();
+					return (editorHintFlags == null || !editorHintFlags.Flags.HasFlag(MemberFlags.Invisible));
+				});
+			
+			HierarchicalContextMenuBuilder.CreateHierarchicalContextMenuItemsFromTypes(
+				this.newToolStripMenuItem, 
+				cmpTypes, 
+				ComponentNode.GetTypeImage, 
+				this.newToolStripMenuItem_DropDownItemClicked,
+				new DefaultEditorCategoryProvider());
 		}
+
 		private void contextMenuNode_Closing(object sender, ToolStripDropDownClosingEventArgs e)
 		{
 			var hoverItem = this.contextMenuNode.GetItemAt(this.contextMenuNode.PointToClient(Cursor.Position));
@@ -1839,53 +1808,6 @@ namespace Duality.Editor.Plugins.SceneView
 				Duality.Editor.Plugins.SceneView.Properties.SceneViewRes.SceneView_Help_Doubleclick,
 				action.Description);
 			else return null;
-		}
-		
-		private static void InsertToolStripTypeItem(System.Collections.IList items, ToolStripItem newItem)
-		{
-			ToolStripItem item2 = newItem;
-			ToolStripMenuItem menuItem2 = item2 as ToolStripMenuItem;
-			for (int i = 0; i < items.Count; i++)
-			{
-				ToolStripItem item1 = items[i] as ToolStripItem;
-				ToolStripMenuItem menuItem1 = item1 as ToolStripMenuItem;
-				if (item1 == null)
-					continue;
-
-				bool item1IsType = item1.Tag is Type;
-				bool item2IsType = item2.Tag is Type;
-				System.Reflection.Assembly assembly1 = item1.Tag is Type ? (item1.Tag as Type).Assembly : item1.Tag as System.Reflection.Assembly;
-				System.Reflection.Assembly assembly2 = item2.Tag is Type ? (item2.Tag as Type).Assembly : item2.Tag as System.Reflection.Assembly;
-				int result = 
-					(assembly2 == typeof(DualityApp).Assembly ? 1 : 0) - 
-					(assembly1 == typeof(DualityApp).Assembly ? 1 : 0);
-				if (result > 0)
-				{
-					items.Insert(i, newItem);
-					return;
-				}
-				else if (result != 0) continue;
-
-				result = 
-					(item2IsType ? 1 : 0) - 
-					(item1IsType ? 1 : 0);
-				if (result > 0)
-				{
-					items.Insert(i, newItem);
-					return;
-				}
-				else if (result != 0) continue;
-
-				result = string.Compare(item1.Text, item2.Text);
-				if (result > 0)
-				{
-					items.Insert(i, newItem);
-					return;
-				}
-				else if (result != 0) continue;
-			}
-
-			items.Add(newItem);
 		}
 	}
 }

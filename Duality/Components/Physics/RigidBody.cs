@@ -1252,7 +1252,7 @@ namespace Duality.Components.Physics
 			List<RigidBody> bodies = new List<RigidBody>();
 			
 			Vector2 fsWorldCoord = PhysicsConvert.ToPhysicalUnit(worldCoord);
-			FarseerPhysics.Collision.AABB fsWorldAABB = new FarseerPhysics.Collision.AABB(fsWorldCoord, PhysicsConvert.ToPhysicalUnit(worldCoord + size));
+			FarseerPhysics.Collision.AABB fsWorldAABB = new FarseerPhysics.Collision.AABB(fsWorldCoord, PhysicsConvert.ToPhysicalUnit(size.X), PhysicsConvert.ToPhysicalUnit(size.Y));
 			Scene.PhysicsWorld.QueryAABB(fixture =>
 				{
 					ShapeInfo shape = fixture.UserData as ShapeInfo;

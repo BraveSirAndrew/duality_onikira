@@ -746,18 +746,13 @@ namespace Duality.Resources
 			GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.GenerateMipmap, this.HasMipmaps ? 1 : 0);
 
 			// Setup pixel format
-			if (Compressed)
-			{
-				GL.CompressedTexImage2D(TextureTarget.Texture2D, 0, PixelInternalFormat.CompressedRgbaS3tcDxt5Ext, 
-					this.texWidth, this.texHeight, 0, 0, IntPtr.Zero);
-			}
-			else
-			{
-				GL.TexImage2D(TextureTarget.Texture2D, 0,
-					this.pixelformat, this.texWidth, this.texHeight, 0,
-					GLPixelFormat.Bgra, PixelType.UnsignedByte, IntPtr.Zero);
-			}
+			if (this.compressed)
+				this.pixelformat = PixelInternalFormat.CompressedRgbaS3tcDxt5Ext;
 
+			GL.TexImage2D(TextureTarget.Texture2D, 0,
+				this.pixelformat, this.texWidth, this.texHeight, 0,
+				GLPixelFormat.Bgra, PixelType.UnsignedByte, IntPtr.Zero);
+			
 			if (lastTexId != this.glTexId) GL.BindTexture(TextureTarget.Texture2D, lastTexId);
 		}
 

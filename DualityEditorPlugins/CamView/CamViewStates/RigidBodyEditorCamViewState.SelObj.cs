@@ -60,7 +60,7 @@ namespace Duality.Editor.Plugins.CamView.CamViewStates
 				this.bodyObj = obj != null ? obj.GameObj : null;
 			}
 
-			public override bool IsActionAvailable(ObjectAction action)
+			public override bool IsActionAvailable(IObjectAction action)
 			{
 				return false;
 			}
@@ -196,11 +196,11 @@ namespace Duality.Editor.Plugins.CamView.CamViewStates
 				this.shape = shape;
 			}
 
-			public override bool IsActionAvailable(ObjectAction action)
+			public override bool IsActionAvailable(IObjectAction action)
 			{
-				if (action == ObjectAction.Move) return true;
-				if (action == ObjectAction.Rotate) return true;
-				if (action == ObjectAction.Scale) return true;
+				if (action is MoveObjectAction) return true;
+				if (action is RotateObjectAction) return true;
+				if (action is ScaleObjectAction) return true;
 				return false;
 			}
 
@@ -254,20 +254,20 @@ namespace Duality.Editor.Plugins.CamView.CamViewStates
 				this.circle = shape;
 			}
 
-			public override bool IsActionAvailable(ObjectAction action)
+			public override bool IsActionAvailable(IObjectAction action)
 			{
-				if (action == ObjectAction.Rotate) return false;
+				if (action is RotateObjectAction) return false;
 				return base.IsActionAvailable(action);
 			}
-			public override string UpdateActionText(ObjectAction action, bool performing)
+			public override string UpdateActionText(IObjectAction action, bool performing)
 			{
-				if (action == ObjectAction.Move)
+				if (action is MoveObjectAction)
 				{
 					return
 						string.Format("Center X:{0,9:0.00}/n", this.circle.Position.X) +
 						string.Format("Center Y:{0,9:0.00}", this.circle.Position.Y);
 				}
-				else if (action == ObjectAction.Scale)
+				else if (action is ScaleObjectAction)
 				{
 					return string.Format("Radius:{0,8:0.00}", this.circle.Radius);
 				}
@@ -331,15 +331,15 @@ namespace Duality.Editor.Plugins.CamView.CamViewStates
 				this.UpdatePolyStats();
 			}
 
-			public override string UpdateActionText(ObjectAction action, bool performing)
+			public override string UpdateActionText(IObjectAction action, bool performing)
 			{
-				if (action == ObjectAction.Move)
+				if (action is MoveObjectAction)
 				{
 					return
 						string.Format("Center X:{0,9:0.00}/n", this.center.X) +
 						string.Format("Center Y:{0,9:0.00}", this.center.Y);
 				}
-				else if (action == ObjectAction.Scale)
+				else if (action is ScaleObjectAction)
 				{
 					if (MathF.Abs(this.scale.X - this.scale.Y) >= 0.01f)
 					{
@@ -352,7 +352,7 @@ namespace Duality.Editor.Plugins.CamView.CamViewStates
 						return string.Format("Scale:{0,8:0.00}", this.scale.X);
 					}
 				}
-				else if (action == ObjectAction.Rotate)
+				else if (action is RotateObjectAction)
 				{
 					return string.Format("Angle:{0,6:0.0}°", MathF.RadToDeg(this.angle));
 				}
@@ -473,15 +473,15 @@ namespace Duality.Editor.Plugins.CamView.CamViewStates
 				this.UpdateLoopStats();
 			}
 
-			public override string UpdateActionText(ObjectAction action, bool performing)
+			public override string UpdateActionText(IObjectAction action, bool performing)
 			{
-				if (action == ObjectAction.Move)
+				if (action is MoveObjectAction)
 				{
 					return
 						string.Format("Center X:{0,9:0.00}/n", this.center.X) +
 						string.Format("Center Y:{0,9:0.00}", this.center.Y);
 				}
-				else if (action == ObjectAction.Scale)
+				else if (action is ScaleObjectAction)
 				{
 					if (MathF.Abs(this.scale.X - this.scale.Y) >= 0.01f)
 					{
@@ -494,7 +494,7 @@ namespace Duality.Editor.Plugins.CamView.CamViewStates
 						return string.Format("Scale:{0,8:0.00}", this.scale.X);
 					}
 				}
-				else if (action == ObjectAction.Rotate)
+				else if (action is RotateObjectAction)
 				{
 					return string.Format("Angle:{0,6:0.0}°", MathF.RadToDeg(this.angle));
 				}

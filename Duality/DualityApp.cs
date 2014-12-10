@@ -94,6 +94,7 @@ namespace Duality
 		private	static	DualityUserData				userData			= null;
 		private	static	DualityMetaData				metaData			= null;
 		private	static	List<object>				disposeSchedule		= new List<object>();
+		private static	bool						windowFocused		= true;
 
 		private static Dictionary<string, CorePlugin> plugins = new Dictionary<string, CorePlugin>();
 		private static List<Assembly> disposedPlugins = new List<Assembly>();
@@ -120,7 +121,11 @@ namespace Duality
 		/// Fired whenever a core plugin has been initialized. This is the case after loading or reloading one.
 		/// </summary>
 		public static event EventHandler<CorePluginEventArgs> PluginReady = null;
-
+		/// <summary>
+		/// Fired whenever the user changes focus to a different window
+		/// </summary>
+		public static event EventHandler<bool> FocusChanged = null;
+		
 
 		/// <summary>
 		/// [GET / SET] The size of the current rendering surface (full screen, a single window, etc.) in pixels. Setting this will not actually change
@@ -425,6 +430,28 @@ namespace Duality
 			initialized = true;
 			InitPlugins();
 		}
+		public static void SetResolution(int width, int height, bool fullscreen)
+		{
+			userData.GfxWidth = width;
+			userData.GfxHeight = height;
+			userData.GfxMode = fullscreen ? ScreenMode.Fullscreen : ScreenMode.Window;
+
+			SaveUserData();
+			OnUserDataChanged();
+		}
+
+		public static IEnumerable<Resolution> GetAvailableResolutions()
+		{
+			return DisplayDevice.Default.AvailableResolutions
+				.Select(resolution => new Resolution
+				{
+					Width = resolution.Width, 
+					Height = resolution.Height, 
+					RefreshRate = resolution.RefreshRate
+				})
+				.Distinct(new ResolutionComparer());
+		}
+
 		/// <summary>
 		/// Terminates this DualityApp. This does not end the current Process, but will instruct the engine to
 		/// leave main loop and message processing as soon as possible.
@@ -512,8 +539,19 @@ namespace Duality
 
 			if (terminateScheduled) Terminate();
 		}
+		public static void OnFocusChanged(bool focused)
+		{
+			windowFocused = focused;
+
+			var handler = FocusChanged;
+			if (handler != null)
+				handler(null, focused);
+		}
 		private static void UpdateUserInput()
 		{
+			if (windowFocused == false)
+				return;
+
 			mouse.Update();
 			keyboard.Update();
 			joysticks.Update();

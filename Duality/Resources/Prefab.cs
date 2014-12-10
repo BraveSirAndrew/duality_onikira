@@ -79,7 +79,6 @@ namespace Duality.Resources
 					this.objTree = obj.Clone();
 				obj.OnSaved(true);
 
-				this.objTree.Parent = null;
 				this.objTree.BreakPrefabLink();
 
 				// Prevent recursion
@@ -437,6 +436,16 @@ namespace Duality.Resources
 				else
 					target = targetObj;
 
+				if (target == null)
+				{
+					Log.Core.WriteError("Error updating PrefabLink changes in {0}, property {1}, child index{2}:\n{3}",
+						this.obj.FullName,
+							this.changes[i].prop.Name,
+							this.changes[i].childIndex,
+							"Target object was null");
+					continue;
+				}
+
 				VarMod modTmp = this.changes[i];
 				modTmp.val = this.changes[i].prop.GetValue(target, null);
 				this.changes[i] = modTmp;
@@ -472,7 +481,7 @@ namespace Duality.Resources
 			change.prop				= prop;
 			change.val				= value;
 
-			this.PopChange(change.childIndex, prop);
+			this.PopChange(change.childIndex, prop, change.componentType);
 			this.changes.Add(change);
 		}
 		/// <summary>
@@ -507,13 +516,16 @@ namespace Duality.Resources
 
 			this.PopChange(this.obj.IndexPathOfChild(targetObj), prop);
 		}
-		private void PopChange(IEnumerable<int> indexPath, PropertyInfo prop)
+		private void PopChange(IEnumerable<int> indexPath, PropertyInfo prop, Type componentType = null)
 		{
 			if (this.changes == null || this.changes.Count == 0) return;
 			for (int i = this.changes.Count - 1; i >= 0; i--)
 			{
 				if (this.changes[i].prop == prop && this.changes[i].childIndex.SequenceEqual(indexPath))
 				{
+					if (componentType != null && this.changes[i].componentType != componentType)
+						continue;
+
 					this.changes.RemoveAt(i);
 					break;
 				}

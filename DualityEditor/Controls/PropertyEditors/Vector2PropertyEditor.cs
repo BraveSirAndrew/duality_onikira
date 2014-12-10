@@ -39,7 +39,7 @@ namespace Duality.Editor.Controls.PropertyEditors
 			}
 			else
 			{
-				var valNotNull = values.NotNull();
+				var valNotNull = values.NotNull().DefaultIfEmpty(Vector2.Zero);
 				float avgX = valNotNull.Average(o => ((Vector2)o).X);
 				float avgY = valNotNull.Average(o => ((Vector2)o).Y);
 

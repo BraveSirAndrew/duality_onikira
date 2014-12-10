@@ -1,8 +1,48 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Reflection;
 
 namespace Duality.Serialization
 {
+	public static class StringToDataType
+	{
+		private static readonly Dictionary<string, DataType> DataTypeLookup = new Dictionary<string, DataType>
+		{
+			{"Bool", DataType.Bool},
+			{"Byte", DataType.Byte},
+			{"SByte", DataType.SByte},
+			{"Short", DataType.Short},
+			{"UShort", DataType.UShort},
+			{"Int", DataType.Int},
+			{"UInt", DataType.UInt},
+			{"Long", DataType.Long},
+			{"ULong", DataType.ULong},
+			{"Float", DataType.Float},
+			{"Double", DataType.Double},
+			{"Decimal", DataType.Decimal},
+			{"Char", DataType.Char},
+			{"String", DataType.String},
+			{"Type", DataType.Type},
+			{"FieldInfo", DataType.FieldInfo},
+			{"PropertyInfo", DataType.PropertyInfo},
+			{"MethodInfo", DataType.MethodInfo},
+			{"ConstructorInfo", DataType.ConstructorInfo},
+			{"EventInfo", DataType.EventInfo},
+			{"Delegate", DataType.Delegate},
+			{"Enum", DataType.Enum},
+			{"Array", DataType.Array},
+			{"Struct", DataType.Struct},
+			{"ObjectRef", DataType.ObjectRef},
+		};
+
+		public static DataType Convert(string dataTypeString)
+		{
+			DataType dataType;
+			if (DataTypeLookup.TryGetValue(dataTypeString, out dataType) == false)
+				dataType = DataType.Unknown;
+			return dataType;
+		}
+	}
 	/// <summary>
 	/// This enum is used by Dualitys serializers to distinguish between certain kinds of data.
 	/// </summary>
