@@ -180,10 +180,6 @@ namespace Duality.Editor
 			DualityEditorApp.needsRecovery = recover;
 			DualityEditorApp.mainForm = mainForm;
 
-			new UnsavedResourceRenamer();
-			var resourceDatabase = new ResourceDatabase(new ResourceEventManagerWrapper(), new XmlResourceContentPathModifier());
-			resourceDatabase.Initialize();
-
 			// Create working directories, if not existing yet.
 			if (!Directory.Exists(DualityApp.DataDirectory))
 			{
@@ -211,6 +207,10 @@ namespace Duality.Editor
 				FileInfo fileInfoIcon = new FileInfo(Path.Combine(DualityApp.DataDirectory, "WorkingFolderIcon.ico"));
 				fileInfoIcon.Attributes |= FileAttributes.Hidden;
 			}
+			new UnsavedResourceRenamer();
+			var resourceDatabase = new ResourceDatabase(new ResourceEventManagerWrapper(), new XmlResourceContentPathModifier());
+			resourceDatabase.Initialize();
+
 			if (!Directory.Exists(DualityApp.PluginDirectory)) Directory.CreateDirectory(DualityApp.PluginDirectory);
 			if (!Directory.Exists(EditorHelper.SourceDirectory)) Directory.CreateDirectory(EditorHelper.SourceDirectory);
 			if (!Directory.Exists(EditorHelper.SourceMediaDirectory)) Directory.CreateDirectory(EditorHelper.SourceMediaDirectory);

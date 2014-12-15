@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using Duality;
 using Duality.Editor;
@@ -14,7 +15,6 @@ namespace DualityEditor.Tests
 	{
 		private Mock<IResourceEventManagerWrapper> _fileEventManager;
 		
-
 		public ResourceDatabase Db { get; set; }
 
 		[SetUp]
@@ -22,6 +22,12 @@ namespace DualityEditor.Tests
 		{
 			_fileEventManager = new Mock<IResourceEventManagerWrapper>();
 			Db = CreateResourceDatabase();
+		}
+
+		[TestFixtureTearDown]
+		public void TearDown()
+		{
+			CleanupFiles();
 		}
 
 		[Test]
@@ -212,7 +218,18 @@ namespace DualityEditor.Tests
 
 		private ResourceDatabase CreateResourceDatabase()
 		{
-			return new ResourceDatabase(_fileEventManager.Object, new XmlResourceContentPathModifier());
+			var db = new ResourceDatabase(_fileEventManager.Object, new XmlResourceContentPathModifier());
+			
+			Directory.CreateDirectory(DualityApp.DataDirectory);
+			CleanupFiles();
+			db.Initialize();
+			return db;
+		}
+
+		private void CleanupFiles()
+		{
+			if (File.Exists(ResourceDatabase.DatabaseName))
+				File.Delete(ResourceDatabase.DatabaseName);
 		}
 	}
 

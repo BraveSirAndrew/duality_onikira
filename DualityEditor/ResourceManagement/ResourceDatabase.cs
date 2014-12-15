@@ -10,7 +10,7 @@ namespace Duality.Editor.ResourceManagement
 	public class ResourceDatabase
 	{
 		private readonly IResourceContentPathModifier _contentPathModifier;
-		private const string DatabaseName = "ResourceDatabase.db";
+		public const string DatabaseName = "ResourceDatabase.db";
 
 		private List<KeyValuePair<string, string>> _references = new List<KeyValuePair<string, string>>();
 
@@ -31,6 +31,8 @@ namespace Duality.Editor.ResourceManagement
 
 		public void Initialize()
 		{
+			if (!Directory.Exists(DualityApp.DataDirectory))
+				return;
 			if (File.Exists(DatabaseName) == false)
 			{
 				var resources = Resource.GetResourceFiles();
@@ -39,17 +41,17 @@ namespace Duality.Editor.ResourceManagement
 					OnResourceCreated(this, new ResourceEventArgs(resource));
 				}
 
-				Formatter.WriteObject(_references, DatabaseName, FormattingMethod.Binary);
+				Formatter.WriteObject(_references, DatabaseName, FormattingMethod.Xml);
 			}
 			else
 			{
-				_references = Formatter.ReadObject<List<KeyValuePair<string, string>>>(DatabaseName, FormattingMethod.Binary);
+				_references = Formatter.ReadObject<List<KeyValuePair<string, string>>>(DatabaseName, FormattingMethod.Xml);
 			}
 		}
 
 		public ResourceReferences GetResourceReferences(string resourcePath)
 		{
-			if (!_references.Any(x => x.Key == resourcePath))
+			if (_references.All(x => x.Key != resourcePath))
 				return null;
 			var resources = _references.Where(x => x.Key == resourcePath).Select(x => x.Value).ToList();
 			return new ResourceReferences { Path = resourcePath, References = resources };
@@ -90,6 +92,7 @@ namespace Duality.Editor.ResourceManagement
 		private void OnResourceDeleted(object sender, ResourceEventArgs e)
 		{
 			_references.RemoveAll(x => x.Key == e.Path);
+			_references.RemoveAll(x => x.Value == e.Path);
 		}
 
 		private void OnResourceRenamed(object sender, ResourceRenamedEventArgs e)
@@ -109,6 +112,15 @@ namespace Duality.Editor.ResourceManagement
 			{
 				_references[_references.IndexOf(reference)] = new KeyValuePair<string, string>(reference.Key, e.Path);
 			}
+
+			var referencesValues = _references.Where(x => x.Key == e.OldPath)
+					.Select(x => x.Value).ToArray();
+
+			foreach (var value in referencesValues)
+			{
+				_references.Add(new KeyValuePair<string, string>(e.Path, value));
+			}
+			_references.RemoveAll(x => x.Key == e.OldPath);
 		}
 	}
 }
